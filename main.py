@@ -2,110 +2,77 @@
 Author: jonnyzhang02 71881972+jonnyzhang02@users.noreply.github.com
 Date: 2023-04-10 08:52:32
 LastEditors: jonnyzhang02 71881972+jonnyzhang02@users.noreply.github.com
-LastEditTime: 2023-04-11 20:34:32
-FilePath: \nlp_hw_1\main.py
+LastEditTime: 2023-04-18 09:02:50
+FilePath: \nlp_hw_1\old.py
 Description: coded by ZhangYang@BUPT, my email is zhangynag0207@bupt.edu.cn
 
 Copyright (c) 2023 by zhangyang0207@bupt.edu.cn, All Rights Reserved. 
 '''
-import os
 import re
-import sys
-import pickle
 import collections
-from tqdm import tqdm
+import time
+
+corpus = [] #语料 一个二维数组，每个元素是一个piece，piece是一个一维数组，每个元素是一个词汇
+vocab = collections.defaultdict(int) # 词典
+
+def init_corpus(txtfile):
+    # 初始化语料库
+    """
+    读取txt文件，将标点符号转换为#，并以空格分割，将每个词汇作为一个piece，将每个piece作为一个训练数据
+    """
+    piece = []
+    with open(txtfile, 'r', encoding="utf-8") as f:  # 读取文件
+        for line in f: # 读取每一行
+            line = punctuation_removal(line) # 将标点符号转换为#
+            words = line.split(' ') # 以空格分割
+            for word in words:
+                if word == '#' or word == '#\n': 
+                    #如果是标点符号分割开的，或者不同行的，必然不会是一个词汇，所以把他们放在不同的piece里面
+                    corpus.append(piece)
+                    # piece 作为一条训练数据你数据
+                    # print(piece,"\n")
+                    # time.sleep(1)
+                    piece = []
+                else:
+                    piece.append(word)
+    print(len(corpus))
+    return corpus
+
 
 def punctuation_removal(text):
     # 将中文标点符号替换为#
-    text = re.sub(r'[，。？！、‘’“”【】（）《》：；]', '#', text)
+    text = re.sub(r"[\u3000-\u303F\uFF00-\uFFEF\u2000-\u206F]", '#', text)
     # 将英文标点符号替换为#
-    text = re.sub(r'[,.?!\'\"(){}:;]', '#', text)
+    text = re.sub(r"[\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E]", '#', text)
     return text
 
-def get_vocab(filename):
-    vocab = collections.defaultdict(int) # 词典
-    with open(filename, 'r', encoding="utf-8") as f:  # 读取文件
-        for line in f: # 读取每一行
-            line = punctuation_removal(line) # 去除标点符号
-            words = line.split('\n') # 以空格分割
-            for word in words:
-                vocab[''.join(list(word.strip())) + ' </w>'] += 1 # 以</w>结尾
-    print('Vocab size: {}'.format(len(vocab)))
+
+def init_vocab():
+    global vocab
+    for piece in corpus:
+        for word in piece:
+            vocab[''.join(list(word)) + '</w>'] += 1 # 词典
+    print('Vocab size: {}'.format(len(vocab))) # 词典大小
     return vocab
 
-def get_tokens_from_vocab(vocab):
-    tokens_frequencies = collections.defaultdict(int)
-    for word, freq in vocab.items():
-        word_tokens = word.split()
-        for token in word_tokens:
-            tokens_frequencies[token] += freq  
-    print(tokens_frequencies)
-    print('Tokens size: {}'.format(len(tokens_frequencies)))
-    return tokens_frequencies
-
-def get_stats(vocab):
-    # 统计相邻词频
-    pairs = collections.defaultdict(int) # 相邻词频
-    for word, freq in vocab.items(): # 遍历词典     
-        symbols = word.split() # 以空格分割
-        for i in range(len(symbols)-1): # 遍历每个词
-            pairs[symbols[i],symbols[i+1]] += freq # 统计相邻词频
+def init_frequency():
+    global corpus
+    pairs = collections.defaultdict(int)
+    for piece in corpus:
+        for i in range(len(piece) - 1):
+            pairs[piece[i], piece[i + 1]] += 1
+    print('Pairs size: {}'.format(len(pairs)))
+    sorted_pairs  = sorted(pairs.items(), key=lambda x: x[1], reverse=True)
+    for pair in sorted_pairs:
+        print(pair)
+        time.sleep(1)
     return pairs
 
-def merge_vocab(pair, v_in):
-    v_out = {}
-    bigram = re.escape(' '.join(pair))
-    p = re.compile(r'(?<!\S)' + bigram + r'(?!\S)')
-    for word in v_in:
-        w_out = p.sub(''.join(pair), word)
-        v_out[w_out] = v_in[word]
-    return v_out
-
-
-def measure_token_length(token):
-    if token[-4:] == '</w>':
-        return len(token[:-4]) + 1
-    else:
-        return len(token)
-    
-def get_sorted_tokens(filename, k):
-    vocab = get_vocab(filename)
-    tokens_frequencies = get_tokens_from_vocab(vocab)
-
-    while len(tokens_frequencies) < k:
-        pairs = get_stats(vocab)
-        best = max(pairs, key=pairs.get)
-        vocab = merge_vocab(best, vocab)
-        tokens_frequencies[''.join(best)] += 1
-
-    sorted_tokens_tuple = sorted(
-                            tokens_frequencies.items(), 
-                            key=lambda item: (measure_token_length(item[0]), item[1]), 
-                            reverse=True
-                        )
-    return sorted_tokens_tuple
-
-def train(filename, k):
-    vocab = get_vocab(filename) # get vocab
-    tokens_frequencies = get_tokens_from_vocab(vocab)
-
-    while len(tokens_frequencies) < k:
-        pairs = get_stats(vocab)
-        best = max(pairs, key=pairs.get)
-        vocab = merge_vocab(best, vocab)
-        tokens_frequencies[''.join(best)] += 1
-
-    sorted_tokens_tuple = sorted(
-                            tokens_frequencies.items(), 
-                            key=lambda item: (measure_token_length(item[0]), item[1]), 
-                            reverse=True
-                        )
-    F = open('sorted_tokens','wb')
-    pickle.dump(sorted_tokens_tuple, F)
-    F.close()
 
 if __name__ == '__main__':
-        train('./data/train_BPE.txt', 10000)
+        init_corpus('./data/train_BPE.txt')
+        init_vocab()
+        init_frequency()
 
 
     

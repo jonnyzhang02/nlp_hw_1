@@ -2,7 +2,7 @@
 Author: jonnyzhang02 71881972+jonnyzhang02@users.noreply.github.com
 Date: 2023-04-10 08:52:32
 LastEditors: jonnyzhang02 71881972+jonnyzhang02@users.noreply.github.com
-LastEditTime: 2023-04-18 21:14:14
+LastEditTime: 2023-04-20 15:41:39
 FilePath: \nlp_hw_1\main.py
 Description: coded by ZhangYang@BUPT, my email is zhangynag0207@bupt.edu.cn
 
@@ -50,24 +50,24 @@ def punctuation_removal(text):
 
 
 def init_vocab():
-    global vocab
-    for piece in corpus:
-        if len(piece):
-            for word in piece:
-                vocab[word] += 1 # 词典
+    global vocab # 词典
+    for piece in corpus: # 语料库
+        if len(piece): # 如果piece不为空
+            for word in piece: # piece中的每个词汇 
+                vocab[word] += 1 #  
     print('Vocab size: {}'.format(len(vocab))) # 词典大小
     return vocab
 
 def get_frequency_merge_max():
-    global corpus
-    global vocab
-    pairs = collections.defaultdict(int)
-    for piece in corpus:
-        for i in range(len(piece) - 1):
-            pairs[piece[i], piece[i + 1]] += 1
+    global corpus #     语料库
+    global vocab # 词典
+    pairs = collections.defaultdict(int) # 词对
+    for piece in corpus: # 语料库
+        for i in range(len(piece) - 1): # 每个piece中的词汇
+            pairs[piece[i], piece[i + 1]] += 1 # 词对的频率
     # print('Pairs size: {}'.format(len(pairs)))
-    sorted_pairs  = sorted(pairs.items(), key=lambda x: x[1], reverse=True)
-    max_pair = sorted_pairs[0]
+    sorted_pairs  = sorted(pairs.items(), key=lambda x: x[1], reverse=True) # 词对按照频率从大到小排序
+    max_pair = sorted_pairs[0] # 词频最大的词对
 
     with open('./log.txt', 'a', encoding="utf-8") as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + '\n')
@@ -79,13 +79,13 @@ def get_frequency_merge_max():
     merge_vocab(max_pair[0])
 
     # 将corpus中的词汇进行合并
-    for j in range(len(corpus)):
-        if len(corpus[j]) >= 2:
-            for i in range(len(corpus[j]) - 1):
-                if corpus[j][i] == max_pair[0][0] and corpus[j][i + 1] == max_pair[0][1]:
-                    corpus[j][i] = max_pair[0][0] + max_pair[0][1]
-                    corpus[j][i+1] = ''
-        corpus[j] = [s.strip() for s in corpus[j] if s.strip()]
+    for j in range(len(corpus)): # 遍历语料库
+        if len(corpus[j]) >= 2: # 如果piece中的词汇大于等于2
+            for i in range(len(corpus[j]) - 1): # 遍历piece中的词汇
+                if corpus[j][i] == max_pair[0][0] and corpus[j][i + 1] == max_pair[0][1]: # 如果词汇和最大词对中的词汇相同
+                    corpus[j][i] = max_pair[0][0] + max_pair[0][1] # 将词汇合并
+                    corpus[j][i+1] = '' # 将词汇合并
+        corpus[j] = [s.strip() for s in corpus[j] if s.strip()] # 去除空格
 
     return pairs
 
